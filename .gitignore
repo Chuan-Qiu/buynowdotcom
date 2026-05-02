@@ -1,0 +1,13 @@
+target/
+*.class
+*.jar
+*.war
+
+.idea/
+*.iml
+*.iws
+*.ipr
+
+application.properties
+application.yaml
+application.yml
