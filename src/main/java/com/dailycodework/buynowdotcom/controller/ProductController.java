@@ -27,6 +27,13 @@ public class ProductController {
         return ResponseEntity.ok(new ApiResponse("Success", products));
     }
 
+    @GetMapping("/distinct/products")
+    public ResponseEntity<ApiResponse> getDistinctProducts() {
+        List<ProductDto> products = productService.getDistinctProductsByName().stream()
+                .map(p -> modelMapper.map(p, ProductDto.class)).toList();
+        return ResponseEntity.ok(new ApiResponse("Success", products));
+    }
+
     @GetMapping("/{productId}")
     public ResponseEntity<ApiResponse> getProductById(@PathVariable Long productId) {
         Product product = productService.getProductById(productId);

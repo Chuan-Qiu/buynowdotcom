@@ -13,6 +13,7 @@ public interface IProductService {
     void deleteProductById(Long productId);
 
     List<Product> getAllProducts();
+    List<Product> getDistinctProductsByName();
     List<Product> getProductByCategory(String category);
     List<Product> getProductByName(String name);
     List<Product> getProductByBrand(String brand);

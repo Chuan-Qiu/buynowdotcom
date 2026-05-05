@@ -18,6 +18,11 @@ public class CategoryController {
         return ResponseEntity.ok(new ApiResponse("Success", categoryService.getAllCategories()));
     }
 
+    @GetMapping("/all")
+    public ResponseEntity<ApiResponse> getAllCategoriesList() {
+        return ResponseEntity.ok(new ApiResponse("Success", categoryService.getAllCategories()));
+    }
+
     @PostMapping("/add")
     public ResponseEntity<ApiResponse> addCategory(@RequestBody Category category) {
         Category saved = categoryService.addCategory(category);

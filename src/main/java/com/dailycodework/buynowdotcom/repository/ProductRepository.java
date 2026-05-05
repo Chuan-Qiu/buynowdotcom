@@ -24,4 +24,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query("SELECT p FROM Product p WHERE LOWER(p.category.name) LIKE LOWER(CONCAT('%', :category, '%')) AND LOWER(p.brand) LIKE LOWER(CONCAT('%', :brand, '%'))")
     List<Product> findByCategoryNameAndBrand(String category, String brand);
+
+    @Query("SELECT p FROM Product p WHERE p.id IN (SELECT MIN(p2.id) FROM Product p2 GROUP BY p2.name)")
+    List<Product> findDistinctByName();
 }

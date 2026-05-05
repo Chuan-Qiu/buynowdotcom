@@ -114,6 +114,11 @@ class ProductService implements IProductService {
     }
 
     @Override
+    public List<Product> getDistinctProductsByName() {
+        return productRepository.findDistinctByName();
+    }
+
+    @Override
     public List<Product> getProductByCategory(String category) {
         return productRepository.findByCategoryName(category);
     }
