@@ -1,43 +1,43 @@
 package com.dailycodework.buynowdotcom.service.product;
 
-import com.dailycodework.buynowdotcom.model.Cart;
-import com.dailycodework.buynowdotcom.model.CartItem;
-import com.dailycodework.buynowdotcom.model.Category;
-import com.dailycodework.buynowdotcom.model.OrderItem;
-import com.dailycodework.buynowdotcom.model.Product;
-import com.dailycodework.buynowdotcom.repository.CartItemRepository;
-import com.dailycodework.buynowdotcom.repository.CategoryRepository;
-import com.dailycodework.buynowdotcom.repository.OrderItemRepository;
-import com.dailycodework.buynowdotcom.repository.ProductRepository;
+import com.dailycodework.buynowdotcom.dto.ImageDto;
+import com.dailycodework.buynowdotcom.dto.ProductDto;
+import com.dailycodework.buynowdotcom.model.*;
+import com.dailycodework.buynowdotcom.repository.*;
 import com.dailycodework.buynowdotcom.request.AddProductRequest;
-import com.dailycodework.buynowdotcom.request.UpdateProductRequest;
+import com.dailycodework.buynowdotcom.request.ProductUpdateRequest;
 import jakarta.persistence.EntityExistsException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-class ProductService implements IProductService {
+public class ProductService implements IProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final CartItemRepository cartItemRepository;
     private final OrderItemRepository orderItemRepository;
+    private final ImageRepository imageRepository;
+    private final ModelMapper modelMapper;
 
     @Override
     public Product addProduct(AddProductRequest request) {
         if (productExists(request.getName(), request.getBrand())) {
-            throw new EntityExistsException(request.getName() + "already exists!");
+            throw new EntityExistsException(request.getName() + " already exists!");
         }
-
         Category category = Optional.ofNullable(categoryRepository.findByName(request.getCategory().getName()))
                 .orElseGet(() -> {
-            Category newCategory = new Category(request.getCategory().getName());
-            return categoryRepository.save(newCategory);
-        });
+                    Category newCategory = new Category(request.getCategory().getName());
+                    return categoryRepository.save(newCategory);
+                });
         request.setCategory(category);
         return productRepository.save(createProduct(request, category));
     }
@@ -53,24 +53,23 @@ class ProductService implements IProductService {
                 request.getDescription(),
                 request.getPrice(),
                 request.getInventory(),
-                category
-        );
+                category);
     }
 
     @Override
-    public Product updateProduct(UpdateProductRequest request, Long productId) {
+    public Product updateProduct(ProductUpdateRequest request, Long productId) {
         return productRepository.findById(productId)
                 .map(existingProduct -> updateExistingProduct(existingProduct, request))
-                .map(productRepository :: save)
-                .orElseThrow(()-> new EntityNotFoundException("Product not found!"));
+                .map(productRepository::save)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found!"));
     }
 
-    private Product updateExistingProduct(Product existingProduct, UpdateProductRequest request){
+    private Product updateExistingProduct(Product existingProduct, ProductUpdateRequest request) {
         existingProduct.setName(request.getName());
         existingProduct.setBrand(request.getBrand());
-        existingProduct.setDescription(request.getDescription());
         existingProduct.setPrice(request.getPrice());
         existingProduct.setInventory(request.getInventory());
+        existingProduct.setDescription(request.getDescription());
         Category category = categoryRepository.findByName(request.getCategory().getName());
         existingProduct.setCategory(category);
         return existingProduct;
@@ -92,11 +91,9 @@ class ProductService implements IProductService {
                         orderItem.setProduct(null);
                         orderItemRepository.save(orderItem);
                     });
-
                     Optional.ofNullable(product.getCategory())
                             .ifPresent(category -> category.getProducts().remove(product));
                     product.setCategory(null);
-
                     productRepository.deleteById(product.getId());
                 }, () -> {
                     throw new EntityNotFoundException("Product not found!");
@@ -105,7 +102,8 @@ class ProductService implements IProductService {
 
     @Override
     public Product getProductById(Long productId) {
-        return productRepository.findById(productId).orElseThrow(() -> new EntityNotFoundException("Product Not Found"));
+        return productRepository.findById(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found"));
     }
 
     @Override
@@ -114,33 +112,69 @@ class ProductService implements IProductService {
     }
 
     @Override
-    public List<Product> getDistinctProductsByName() {
-        return productRepository.findDistinctByName();
+    public List<Product> getProductsByCategoryAndBrand(String category, String brand) {
+        return productRepository.findByCategoryNameAndBrand(category, brand);
     }
 
     @Override
-    public List<Product> getProductByCategory(String category) {
+    public List<Product> getProductsByCategory(String category) {
         return productRepository.findByCategoryName(category);
     }
 
     @Override
-    public List<Product> getProductByName(String name) {
-        return productRepository.findByName(name);
+    public List<Product> getProductsByBrandAndName(String brand, String name) {
+        return productRepository.findByNameAndBrand(brand, name);
     }
 
     @Override
-    public List<Product> getProductByBrand(String brand) {
+    public List<Product> getProductsByBrand(String brand) {
         return productRepository.findByBrand(brand);
     }
 
     @Override
-    public List<Product> getProductByBrandAndName(String brand, String name) {
-        return productRepository.findByBrandAndName(brand, name);
+    public List<Product> getProductsByName(String name) {
+        return Optional.ofNullable(productRepository.findByName(name))
+                .orElseThrow(() -> new EntityNotFoundException("Product not found"));
     }
 
     @Override
-    public List<Product> getProductByCategoryAndBrand(String category, String brand) {
-        return productRepository.findByCategoryNameAndBrand(category, brand);
+    public List<Product> findDistinctProductsByName() {
+        List<Product> products = getAllProducts();
+        Map<String, Product> distinctProductMap = products.stream()
+                .collect(Collectors.toMap(
+                        Product::getName,
+                        product -> product,
+                        (existing, replacement) -> existing));
+        return new ArrayList<>(distinctProductMap.values());
     }
 
+    @Override
+    public List<String> getAllDistinctBrands() {
+        return productRepository.findAll()
+                .stream()
+                .map(Product::getBrand)
+                .distinct()
+                .toList();
+    }
+
+    @Override
+    public List<ProductDto> getConvertedProducts(List<Product> products) {
+        return products.stream().map(this::convertToDto).toList();
+    }
+
+    @Override
+    public ProductDto convertToDto(Product product) {
+        ProductDto productDto = modelMapper.map(product, ProductDto.class);
+        List<Image> images = imageRepository.findByProductId(product.getId());
+        List<ImageDto> imageDtos = images.stream()
+                .map(image -> modelMapper.map(image, ImageDto.class))
+                .toList();
+        productDto.setImages(imageDtos);
+        return productDto;
+    }
+
+    @Override
+    public List<Product> getProductsByCategoryId(Long categoryId) {
+        return productRepository.findAllByCategoryId(categoryId);
+    }
 }

@@ -3,93 +3,106 @@ package com.dailycodework.buynowdotcom.controller;
 import com.dailycodework.buynowdotcom.dto.ProductDto;
 import com.dailycodework.buynowdotcom.model.Product;
 import com.dailycodework.buynowdotcom.request.AddProductRequest;
-import com.dailycodework.buynowdotcom.request.UpdateProductRequest;
+import com.dailycodework.buynowdotcom.request.ProductUpdateRequest;
 import com.dailycodework.buynowdotcom.response.ApiResponse;
 import com.dailycodework.buynowdotcom.service.product.IProductService;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("${api.prefix}/products")
 @RequiredArgsConstructor
+@RequestMapping("${api.prefix}/products")
 public class ProductController {
     private final IProductService productService;
-    private final ModelMapper modelMapper;
 
-    @GetMapping
+    @GetMapping("/all")
     public ResponseEntity<ApiResponse> getAllProducts() {
-        List<ProductDto> products = productService.getAllProducts().stream()
-                .map(p -> modelMapper.map(p, ProductDto.class)).toList();
-        return ResponseEntity.ok(new ApiResponse("Success", products));
+        List<Product> products = productService.getAllProducts();
+        List<ProductDto> convertedProducts = productService.getConvertedProducts(products);
+        return ResponseEntity.ok(new ApiResponse("Found", convertedProducts));
     }
 
-    @GetMapping("/distinct/products")
-    public ResponseEntity<ApiResponse> getDistinctProducts() {
-        List<ProductDto> products = productService.getDistinctProductsByName().stream()
-                .map(p -> modelMapper.map(p, ProductDto.class)).toList();
-        return ResponseEntity.ok(new ApiResponse("Success", products));
-    }
-
-    @GetMapping("/{productId}")
+    @GetMapping("product/{productId}/product")
     public ResponseEntity<ApiResponse> getProductById(@PathVariable Long productId) {
         Product product = productService.getProductById(productId);
-        return ResponseEntity.ok(new ApiResponse("Success", modelMapper.map(product, ProductDto.class)));
+        ProductDto productDto = productService.convertToDto(product);
+        return ResponseEntity.ok(new ApiResponse("Found!", productDto));
     }
 
     @PostMapping("/add")
-    public ResponseEntity<ApiResponse> addProduct(@RequestBody AddProductRequest request) {
-        Product product = productService.addProduct(request);
-        return ResponseEntity.ok(new ApiResponse("Product added successfully", modelMapper.map(product, ProductDto.class)));
+    public ResponseEntity<ApiResponse> addProduct(@RequestBody AddProductRequest product) {
+        Product theProduct = productService.addProduct(product);
+        ProductDto productDto = productService.convertToDto(theProduct);
+        return ResponseEntity.ok(new ApiResponse("Add product success!", productDto));
     }
 
-    @PutMapping("/{productId}/update")
-    public ResponseEntity<ApiResponse> updateProduct(@RequestBody UpdateProductRequest request, @PathVariable Long productId) {
-        Product product = productService.updateProduct(request, productId);
-        return ResponseEntity.ok(new ApiResponse("Product updated successfully", modelMapper.map(product, ProductDto.class)));
+    @PutMapping("/product/{productId}/update")
+    public ResponseEntity<ApiResponse> updateProduct(@RequestBody ProductUpdateRequest request, @PathVariable Long productId) {
+        Product theProduct = productService.updateProduct(request, productId);
+        ProductDto productDto = productService.convertToDto(theProduct);
+        return ResponseEntity.ok(new ApiResponse("Update product success!", productDto));
     }
 
-    @DeleteMapping("/{productId}/delete")
+    @DeleteMapping("/product/{productId}/delete")
     public ResponseEntity<ApiResponse> deleteProduct(@PathVariable Long productId) {
         productService.deleteProductById(productId);
-        return ResponseEntity.ok(new ApiResponse("Product deleted successfully", null));
+        return ResponseEntity.ok(new ApiResponse("Delete product success!", productId));
     }
 
-    @GetMapping("/by/brand-and-name")
-    public ResponseEntity<ApiResponse> getProductByBrandAndName(@RequestParam String brand, @RequestParam String name) {
-        List<ProductDto> products = productService.getProductByBrandAndName(brand, name).stream()
-                .map(p -> modelMapper.map(p, ProductDto.class)).toList();
-        return ResponseEntity.ok(new ApiResponse("Success", products));
+    @GetMapping("/products/by/brand-and-name")
+    public ResponseEntity<ApiResponse> getProductByBrandAndName(@RequestParam String brandName, @RequestParam String productName) {
+        List<Product> products = productService.getProductsByBrandAndName(brandName, productName);
+        List<ProductDto> convertedProducts = productService.getConvertedProducts(products);
+        return ResponseEntity.ok(new ApiResponse("success", convertedProducts));
     }
 
-    @GetMapping("/by/category-and-brand")
+    @GetMapping("/products/by/category-and-brand")
     public ResponseEntity<ApiResponse> getProductByCategoryAndBrand(@RequestParam String category, @RequestParam String brand) {
-        List<ProductDto> products = productService.getProductByCategoryAndBrand(category, brand).stream()
-                .map(p -> modelMapper.map(p, ProductDto.class)).toList();
-        return ResponseEntity.ok(new ApiResponse("Success", products));
+        List<Product> products = productService.getProductsByCategoryAndBrand(category, brand);
+        List<ProductDto> convertedProducts = productService.getConvertedProducts(products);
+        return ResponseEntity.ok(new ApiResponse("success", convertedProducts));
     }
 
-    @GetMapping("/by/name")
-    public ResponseEntity<ApiResponse> getProductByName(@RequestParam String name) {
-        List<ProductDto> products = productService.getProductByName(name).stream()
-                .map(p -> modelMapper.map(p, ProductDto.class)).toList();
-        return ResponseEntity.ok(new ApiResponse("Success", products));
+    @GetMapping("/products/{name}/products")
+    public ResponseEntity<ApiResponse> getProductByName(@PathVariable String name) {
+        List<Product> products = productService.getProductsByName(name);
+        List<ProductDto> convertedProducts = productService.getConvertedProducts(products);
+        return ResponseEntity.ok(new ApiResponse("success", convertedProducts));
     }
 
-    @GetMapping("/by/brand")
-    public ResponseEntity<ApiResponse> getProductByBrand(@RequestParam String brand) {
-        List<ProductDto> products = productService.getProductByBrand(brand).stream()
-                .map(p -> modelMapper.map(p, ProductDto.class)).toList();
-        return ResponseEntity.ok(new ApiResponse("Success", products));
+    @GetMapping("/product/by-brand")
+    public ResponseEntity<ApiResponse> findProductByBrand(@RequestParam String brand) {
+        List<Product> products = productService.getProductsByBrand(brand);
+        List<ProductDto> convertedProducts = productService.getConvertedProducts(products);
+        return ResponseEntity.ok(new ApiResponse("success", convertedProducts));
     }
 
-    @GetMapping("/by/category")
-    public ResponseEntity<ApiResponse> getProductByCategory(@RequestParam String category) {
-        List<ProductDto> products = productService.getProductByCategory(category).stream()
-                .map(p -> modelMapper.map(p, ProductDto.class)).toList();
-        return ResponseEntity.ok(new ApiResponse("Success", products));
+    @GetMapping("/{category}/products")
+    public ResponseEntity<ApiResponse> findProductsByCategory(@PathVariable String category) {
+        List<Product> products = productService.getProductsByCategory(category);
+        List<ProductDto> convertedProducts = productService.getConvertedProducts(products);
+        return ResponseEntity.ok(new ApiResponse("success", convertedProducts));
+    }
+
+    @GetMapping("/category/{categoryId}/products")
+    public ResponseEntity<ApiResponse> findProductsByCategoryId(@PathVariable Long categoryId) {
+        List<Product> products = productService.getProductsByCategoryId(categoryId);
+        List<ProductDto> convertedProducts = productService.getConvertedProducts(products);
+        return ResponseEntity.ok(new ApiResponse("success", convertedProducts));
+    }
+
+    @GetMapping("/distinct/products")
+    public ResponseEntity<ApiResponse> getDistinctProductsByName() {
+        List<Product> products = productService.findDistinctProductsByName();
+        List<ProductDto> productDtos = productService.getConvertedProducts(products);
+        return ResponseEntity.ok(new ApiResponse("Found", productDtos));
+    }
+
+    @GetMapping("/distinct/brands")
+    public ResponseEntity<ApiResponse> getDistinctBrands() {
+        return ResponseEntity.ok(new ApiResponse("Found", productService.getAllDistinctBrands()));
     }
 }
