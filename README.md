@@ -1,134 +1,120 @@
-# BuyNow — E-Commerce Backend
+# BuyNow
 
-A RESTful e-commerce backend built with Spring Boot 4, Spring Security, and MySQL.
+A full-stack e-commerce platform — React SPA front end, Spring Boot REST API back end, MySQL.
 
-## Tech Stack
+| | Stack |
+|---|---|
+| **Frontend** | React 19 · Redux Toolkit · React Router 7 · Vite 8 · Axios · React-Bootstrap |
+| **Backend** | Java 21 · Spring Boot 4 · Spring Security (stateless JWT) · Spring Data JPA · ModelMapper |
+| **Database** | MySQL |
 
-- **Java 21** + **Spring Boot 4.0.5**
-- **Spring Security 7** with stateless JWT authentication (jjwt 0.12.3)
-- **Spring Data JPA** + **Hibernate 7** + **MySQL 9**
-- **ModelMapper** for entity-to-DTO conversion
-- **Lombok**
+## Repository Layout
 
-## Getting Started
-
-### Prerequisites
-
-- Java 21
-- MySQL 9 (via Homebrew: `brew install mysql`)
-- Maven (or use the included `./mvnw` wrapper)
-
-### Configuration
-
-Create `src/main/resources/application.yaml` (excluded from git):
-
-```yaml
-spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/buynowdotcom?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-    username: root
-    password: your_password
-    driver-class-name: com.mysql.cj.jdbc.Driver
-  jpa:
-    hibernate:
-      ddl-auto: update
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.MySQLDialect
-  servlet:
-    multipart:
-      max-file-size: 10MB
-      max-request-size: 10MB
-
-server:
-  port: 8080
-
-api:
-  prefix: /api/v1
-
-auth:
-  token:
-    jwtSecret: your_jwt_secret_key_at_least_32_chars
-    expirationInMils: 3600000
+```
+buynowdotcom/
+├── backend/     Spring Boot REST API  (Maven)
+├── frontend/    React SPA             (Vite)
+├── DESIGN.md    Architecture & design document (UML diagrams)
+└── CLAUDE.md    Working notes for AI-assisted development
 ```
 
-### Run
+The two sides are decoupled by an explicit contract: versioned REST resources under `/api/v1`,
+a single response envelope `{ message, data }`, and DTOs as the only data shape the client sees.
+Entities never cross the API boundary.
+
+## Quick Start
+
+**Prerequisites:** Java 21, MySQL, Node 18+
+
+### 1. Database
 
 ```bash
-# Create database
 mysql -u root -p -e "CREATE DATABASE buynowdotcom;"
+```
 
-# Start the app
+### 2. Backend → http://localhost:9090
+
+Create `backend/src/main/resources/application.properties` (git-ignored — see
+[backend/README.md](backend/README.md) for the full template):
+
+```properties
+server.port=9090
+spring.datasource.url=jdbc:mysql://localhost:3306/buynowdotcom?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+spring.datasource.username=root
+spring.datasource.password=<your_password>
+spring.jpa.hibernate.ddl-auto=update
+api.prefix=/api/v1
+auth.token.jwtSecret=<hex_secret_at_least_32_bytes>
+auth.token.accessExpirationInMils=120000
+auth.token.refreshExpirationInMils=300000
+app.useSecureCookie=false
+```
+
+```bash
+cd backend
 ./mvnw spring-boot:run
 ```
 
-## API Overview
+> Requires Java 21. If your default JDK is older:
+> `JAVA_HOME=$(/usr/libexec/java_home -v 21) ./mvnw spring-boot:run`
 
-Base URL: `http://localhost:8080/api/v1`
+### 3. Frontend → http://localhost:5174
 
-All responses follow the format:
-```json
-{ "message": "...", "data": ... }
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
-### Public Endpoints (no token required)
+The API base URL is set in [frontend/src/component/services/api.js](frontend/src/component/services/api.js).
+The backend's CORS configuration allows origins `5173`–`5175`.
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/auth/login` | Login, returns JWT token |
-| POST | `/users/add` | Register new user |
-| GET | `/products` | Get all products |
-| GET | `/products/{id}` | Get product by ID |
-| GET | `/products/by/name?name=` | Search by name |
-| GET | `/products/by/brand?brand=` | Search by brand |
-| GET | `/products/by/category?category=` | Search by category |
-| GET | `/products/by/brand-and-name?brand=&name=` | Search by brand and name |
-| GET | `/products/by/category-and-brand?category=&brand=` | Search by category and brand |
-| POST | `/products/add` | Add product |
-| PUT | `/products/{id}/update` | Update product |
-| DELETE | `/products/{id}/delete` | Delete product |
-| GET | `/categories` | Get all categories |
-| POST | `/categories/add` | Add category |
-| GET | `/categories/{id}` | Get category by ID |
-| GET | `/categories/by/name?name=` | Get category by name |
-| PUT | `/categories/{id}/update` | Update category |
-| DELETE | `/categories/{id}/delete` | Delete category |
-| POST | `/images/upload?productId=` | Upload product images (multipart) |
-| GET | `/images/{id}/download` | Download image |
-| PUT | `/images/{id}/update` | Update image |
-| DELETE | `/images/{id}/delete` | Delete image |
+## Architecture at a Glance
 
-### Protected Endpoints (requires `Authorization: Bearer <token>`)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/users/{id}` | Get user by ID |
-| PUT | `/users/{id}/update` | Update user |
-| DELETE | `/users/{id}/delete` | Delete user |
-| GET | `/carts/{cartId}` | Get cart |
-| GET | `/carts/{cartId}/total-price` | Get cart total |
-| DELETE | `/carts/{cartId}/clear` | Clear cart |
-| POST | `/cartItems/item/add?cartId=&productId=&quantity=` | Add item to cart |
-| PUT | `/cartItems/cart/{cartId}/item/{productId}/update?quantity=` | Update item quantity |
-| DELETE | `/cartItems/cart/{cartId}/item/{productId}/remove` | Remove item from cart |
-| POST | `/orders/order?userId=` | Place order |
-| GET | `/orders/{orderId}/order` | Get order by ID |
-| GET | `/orders/user/{userId}/order` | Get all orders for a user |
-
-## Authentication Flow
-
-1. Register: `POST /api/v1/users/add`
-2. Login: `POST /api/v1/auth/login` → copy the `token` from the response
-3. Add to every protected request header: `Authorization: Bearer <token>`
-
-## Data Model
+**Backend** — strict layering, each domain exposed as an interface + implementation:
 
 ```
-User ──── Cart ──── CartItem ──── Product ──── Category
-  │                                  │
-  └──── Order ──── OrderItem ────────┘
+Controller → IXxxService / XxxService → Repository → Entity
+                                             ↓
+                                       DTO (ModelMapper)
 ```
 
-- A `User` is created with an associated `Cart` automatically
-- Placing an order converts cart items into order items and clears the cart
-- Products are not deleted when cart items are removed (no cascade on `CartItem.product`)
+- One response envelope: `ApiResponse(message, data)`
+- `GlobalExceptionHandler` maps `EntityNotFoundException → 404`, `EntityExistsException → 409`
+- Protected paths (`/carts/**`, `/cartItems/**`, `/orders/**`) declared once in the security filter chain
+- Auth: short-lived access token in the response body + refresh token in an `HttpOnly` cookie
+
+**Frontend** — components split by role, state split by domain:
+
+```
+component/layout/     app shell
+component/product/    page-level "smart" components
+component/common/     reusable presentational components
+component/services/   the only place that knows about the API
+store/features/       searchSlice · productSlice · paginationSlice · categorySlice
+```
+
+Every async call follows one `createAsyncThunk` pattern (`pending / fulfilled / rejected`),
+and all network traffic goes through a single Axios instance.
+
+## Documentation
+
+| Document | Contents |
+|---|---|
+| [DESIGN.md](DESIGN.md) | Full design document: 14 UML diagrams (domain model class diagram, ER, sequence, state), API contract, design decisions with trade-offs, known issues and roadmap |
+| [backend/README.md](backend/README.md) | Backend setup, configuration template, endpoint reference |
+| [backend/TESTING_NOTES.md](backend/TESTING_NOTES.md) | MySQL setup and debugging notes |
+| [backend/POSTMAN_TESTING.md](backend/POSTMAN_TESTING.md) | Manual API testing walkthrough |
+
+## Status
+
+Working: product catalog, categories, brand/name/category filtering, search, pagination,
+image upload & download, user registration, JWT login with refresh, cart and order APIs.
+
+Not yet wired: "add to cart" is complete on the back end but the front-end buttons do not
+dispatch yet.
+
+**This is a learning/portfolio project and is not production-hardened.** Known gaps —
+including missing resource-ownership checks on protected endpoints, unguarded write
+operations, and absent inventory validation — are documented with severity ratings and a
+remediation roadmap in [DESIGN.md §9–§10](DESIGN.md).
