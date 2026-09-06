@@ -2,11 +2,11 @@
 
 A full-stack e-commerce platform — React SPA front end, Spring Boot REST API back end, MySQL.
 
-| | Stack |
-|---|---|
-| **Frontend** | React 19 · Redux Toolkit · React Router 7 · Vite 8 · Axios · React-Bootstrap |
-| **Backend** | Java 21 · Spring Boot 4 · Spring Security (stateless JWT) · Spring Data JPA · ModelMapper |
-| **Database** | MySQL |
+|              | Stack                                                                                     |
+| ------------ | ----------------------------------------------------------------------------------------- |
+| **Frontend** | React 19 · Redux Toolkit · React Router 7 · Vite 8 · Axios · React-Bootstrap              |
+| **Backend**  | Java 21 · Spring Boot 4 · Spring Security (stateless JWT) · Spring Data JPA · ModelMapper |
+| **Database** | MySQL                                                                                     |
 
 ## Repository Layout
 
@@ -100,12 +100,12 @@ and all network traffic goes through a single Axios instance.
 
 ## Documentation
 
-| Document | Contents |
-|---|---|
-| [DESIGN.md](DESIGN.md) | Full-stack design document: 23 UML diagrams (front-end component/state/routing, end-to-end contract sequences, domain model class diagram, ER, security sequences, order state machine), the front-end/back-end contract, design decisions with trade-offs, known issues on both sides, and a remediation roadmap |
-| [backend/README.md](backend/README.md) | Backend setup, configuration template, endpoint reference |
-| [backend/TESTING_NOTES.md](backend/TESTING_NOTES.md) | MySQL setup and debugging notes |
-| [backend/POSTMAN_TESTING.md](backend/POSTMAN_TESTING.md) | Manual API testing walkthrough |
+| Document                                                 | Contents                                                                                                                                                                                                                                                                                                          |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [DESIGN.md](DESIGN.md)                                   | Full-stack design document: 23 UML diagrams (front-end component/state/routing, end-to-end contract sequences, domain model class diagram, ER, security sequences, order state machine), the front-end/back-end contract, design decisions with trade-offs, known issues on both sides, and a remediation roadmap |
+| [backend/README.md](backend/README.md)                   | Backend setup, configuration template, endpoint reference                                                                                                                                                                                                                                                         |
+| [backend/TESTING_NOTES.md](backend/TESTING_NOTES.md)     | MySQL setup and debugging notes                                                                                                                                                                                                                                                                                   |
+| [backend/POSTMAN_TESTING.md](backend/POSTMAN_TESTING.md) | Manual API testing walkthrough                                                                                                                                                                                                                                                                                    |
 
 ## Status
 
@@ -114,8 +114,3 @@ image upload & download, user registration, JWT login with refresh, cart and ord
 
 Not yet wired: "add to cart" is complete on the back end but the front-end buttons do not
 dispatch yet.
-
-**This is a learning/portfolio project and is not production-hardened.** Remaining gaps —
-including absent inventory validation on checkout, `cascade = ALL` on `Product.category`, and
-no server-side pagination — are documented with severity ratings and a remediation roadmap in
-[DESIGN.md §11–§12](DESIGN.md).
