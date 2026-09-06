@@ -31,5 +31,8 @@ application.yml
 .vscode/*
 !.vscode/extensions.json
 
+# ---- Chinese-language working copies (English versions are the tracked ones) ----
+*.zh-CN.md
+
 # ---- OS ----
 .DS_Store

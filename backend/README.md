@@ -147,7 +147,7 @@ All responses (except `/auth/**` and image downloads) use one envelope:
 
 ### Cart & Orders 🔒
 
-Require `Authorization: Bearer <accessToken>`.
+Require `Authorization: Bearer <accessToken>`, and the cart/order must be yours.
 
 | Method | Endpoint |
 |---|---|
@@ -161,8 +161,26 @@ Require `Authorization: Bearer <accessToken>`.
 | GET | `/orders/{orderId}/order` |
 | GET | `/orders/user/{userId}/order` |
 
-> 🔒 marks the only paths in `SECURED_URLS` (`ShopConfig`). Everything else is currently
-> `permitAll()` — see [DESIGN.md §11.2](../DESIGN.md) for why that is a known gap.
+> 🔒 = authenticated **and** the resource must belong to you (checked in the service layer;
+> a mismatch returns 403). 🛡 = requires `ROLE_ADMIN`. Catalog reads are public; every catalog
+> write is admin-only. Anything not listed defaults to requiring authentication.
+> Full matrix: [DESIGN.md §8.4](../DESIGN.md).
+
+## Roles
+
+`RoleSeeder` creates `ROLE_USER` and `ROLE_ADMIN` at startup, and registration grants
+`ROLE_USER`. There is deliberately **no endpoint for granting admin** — an endpoint that lets
+a caller escalate its own privileges would defeat the authorization rules. Promote an account
+directly in the database:
+
+```sql
+INSERT INTO user_roles (user_id, role_id)
+SELECT u.id, r.id
+FROM user u, role r
+WHERE u.email = 'you@example.com' AND r.name = 'ROLE_ADMIN';
+```
+
+Log in again afterwards so the new access token carries the authority.
 
 ## Authentication Flow
 

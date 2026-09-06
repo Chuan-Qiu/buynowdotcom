@@ -81,7 +81,8 @@ Controller → IXxxService / XxxService → Repository → Entity
 
 - One response envelope: `ApiResponse(message, data)`
 - `GlobalExceptionHandler` maps `EntityNotFoundException → 404`, `EntityExistsException → 409`
-- Protected paths (`/carts/**`, `/cartItems/**`, `/orders/**`) declared once in the security filter chain
+- Authorization declared once in the security filter chain, defaulting to deny: catalog reads are public, catalog writes require `ROLE_ADMIN`, and per-user resources require authentication
+- Ownership is checked in the service layer — an id in the URL locates a resource but never proves entitlement (403 on mismatch)
 - Auth: short-lived access token in the response body + refresh token in an `HttpOnly` cookie
 
 **Frontend** — components split by role, state split by domain:
@@ -114,7 +115,7 @@ image upload & download, user registration, JWT login with refresh, cart and ord
 Not yet wired: "add to cart" is complete on the back end but the front-end buttons do not
 dispatch yet.
 
-**This is a learning/portfolio project and is not production-hardened.** Known gaps —
-including missing resource-ownership checks on protected endpoints, unguarded write
-operations, and absent inventory validation — are documented with severity ratings and a
-remediation roadmap in [DESIGN.md §11–§12](DESIGN.md).
+**This is a learning/portfolio project and is not production-hardened.** Remaining gaps —
+including absent inventory validation on checkout, `cascade = ALL` on `Product.category`, and
+no server-side pagination — are documented with severity ratings and a remediation roadmap in
+[DESIGN.md §11–§12](DESIGN.md).

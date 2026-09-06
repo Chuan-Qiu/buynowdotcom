@@ -1,19 +1,38 @@
-# Postman 完整测试流程
+# Postman Walkthrough
 
-base URL: `http://localhost:909/api/v1`
+An end-to-end manual test of the API, in the order that produces working data.
 
-所有 POST/PUT 请求：Body → raw → JSON，Header 自动加 `Content-Type: application/json`。
+**Base URL:** `http://localhost:9090/api/v1`
 
-需要认证的接口在 Headers 加：`Authorization: Bearer <token>`
+- Every POST/PUT with a JSON payload: Body → raw → JSON (Postman sets `Content-Type: application/json`).
+- Endpoints marked 🔒 need `Authorization: Bearer <accessToken>` in Headers.
+- Endpoints marked 🛡 additionally require the account to hold `ROLE_ADMIN` — see step 0.
 
 ---
 
-## 一、用户注册与登录
+## 0. Granting Yourself Admin
 
-### 1. 注册用户
-- 方法：`POST`
-- URL：`/users/add`
-- Body：
+Catalog mutations (products, categories, images) require `ROLE_ADMIN`. There is deliberately
+no API for granting it — a self-service privilege-escalation endpoint would defeat the
+authorization rules entirely. Promote an account directly in the database after registering
+it in step 1:
+
+```sql
+INSERT INTO user_roles (user_id, role_id)
+SELECT u.id, r.id
+FROM user u, role r
+WHERE u.email = 'test@test.com' AND r.name = 'ROLE_ADMIN';
+```
+
+Roles themselves are seeded at startup by `RoleSeeder`. Log in again after the insert so the
+new access token carries the authority.
+
+---
+
+## 1. Users and Authentication
+
+### 1. Register
+- `POST /users/add`
 ```json
 {
   "firstName": "John",
@@ -22,37 +41,33 @@ base URL: `http://localhost:909/api/v1`
   "password": "password"
 }
 ```
-- 预期：`201` 返回用户信息，记下返回的 `id`（后续用作 `userId`）
+Returns the created user. Note the `id` — it is the `userId` used later. A cart is created
+automatically at the same time.
 
----
-
-### 2. 登录
-- 方法：`POST`
-- URL：`/auth/login`
-- Body：
+### 2. Log in
+- `POST /auth/login`
 ```json
 {
   "email": "test@test.com",
   "password": "password"
 }
 ```
-- 预期：返回 `token` 和 `id`，**复制 token**，后续所有需要认证的请求都要带上
+Returns `{ "accessToken": "..." }` and sets an `HttpOnly` `refreshToken` cookie. **Copy the
+access token.** It expires after 2 minutes — when a request starts returning 401, run step 3.
 
----
+### 3. Refresh the access token
+- `POST /auth/refresh-token`
 
-### 3. 查询用户（需要认证）
-- 方法：`GET`
-- URL：`/users/1`（换成实际 userId）
-- Headers：`Authorization: Bearer <token>`
-- 预期：返回用户信息
+Postman sends the refresh cookie automatically. Returns a fresh `accessToken`.
 
----
+### 4. Get user 🔒
+- `GET /users/1`
 
-### 4. 更新用户（需要认证）
-- 方法：`PUT`
-- URL：`/users/1/update`
-- Headers：`Authorization: Bearer <token>`
-- Body：
+Only your own account, or any account if you are an admin. Requesting someone else's id
+returns **403**.
+
+### 5. Update user 🔒
+- `PUT /users/1/update`
 ```json
 {
   "firstName": "John",
@@ -63,57 +78,35 @@ base URL: `http://localhost:909/api/v1`
 
 ---
 
-## 二、分类（Category）
+## 2. Categories
 
-### 5. 添加分类
-- 方法：`POST`
-- URL：`/categories/add`
-- Body：
+### 6. Add a category 🛡
+- `POST /categories/add`
 ```json
-{
-  "name": "Electronics"
-}
+{ "name": "Electronics" }
 ```
-- 预期：返回保存的 category，记下 `id`
 
----
+### 7. List all categories
+- `GET /categories` (or `GET /categories/all`)
 
-### 6. 获取所有分类
-- 方法：`GET`
-- URL：`/categories`
+### 8. Get a category by id
+- `GET /categories/1`
 
----
+### 9. Get a category by name
+- `GET /categories/by/name?name=Electronics`
 
-### 7. 按 ID 查分类
-- 方法：`GET`
-- URL：`/categories/1`
-
----
-
-### 8. 按名称查分类
-- 方法：`GET`
-- URL：`/categories/by/name?name=Electronics`
-
----
-
-### 9. 更新分类
-- 方法：`PUT`
-- URL：`/categories/1/update`
-- Body：
+### 10. Update a category 🛡
+- `PUT /categories/1/update`
 ```json
-{
-  "name": "Consumer Electronics"
-}
+{ "name": "Consumer Electronics" }
 ```
 
 ---
 
-## 三、产品（Product）
+## 3. Products
 
-### 10. 添加产品
-- 方法：`POST`
-- URL：`/products/add`
-- Body：
+### 11. Add a product 🛡
+- `POST /products/add`
 ```json
 {
   "name": "iPhone 15",
@@ -126,57 +119,41 @@ base URL: `http://localhost:909/api/v1`
   }
 }
 ```
-- 预期：返回产品信息，记下 `id`（后续用作 `productId`）
-- 注意：如果 category 名称已存在会复用，不存在会新建
+Note the returned `id` — it is the `productId` used later. An existing category name is
+reused; an unknown one is created.
 
----
+### 12. List all products
+- `GET /products/all`
 
-### 11. 获取所有产品
-- 方法：`GET`
-- URL：`/products`
+### 13. Get a product by id
+- `GET /products/product/1/product`
 
----
+### 14. Search by name
+- `GET /products/products/iPhone/products`
 
-### 12. 按 ID 查产品
-- 方法：`GET`
-- URL：`/products/1`
+### 15. Search by brand
+- `GET /products/product/by-brand?brand=Apple`
 
----
+### 16. Search by category name
+- `GET /products/Electronics/products`
 
-### 13. 按名称搜索
-- 方法：`GET`
-- URL：`/products/by/name?name=iPhone`
+### 17. Search by category id
+- `GET /products/category/1/products`
 
----
+### 18. Search by brand and name
+- `GET /products/products/by/brand-and-name?brandName=Apple&productName=iPhone`
 
-### 14. 按品牌搜索
-- 方法：`GET`
-- URL：`/products/by/brand?brand=Apple`
+### 19. Search by category and brand
+- `GET /products/products/by/category-and-brand?category=Electronics&brand=Apple`
 
----
+### 20. Distinct products (one per name)
+- `GET /products/distinct/products`
 
-### 15. 按分类搜索
-- 方法：`GET`
-- URL：`/products/by/category?category=Electronics`
+### 21. Distinct brands
+- `GET /products/distinct/brands`
 
----
-
-### 16. 按品牌 + 名称搜索
-- 方法：`GET`
-- URL：`/products/by/brand-and-name?brand=Apple&name=iPhone`
-
----
-
-### 17. 按分类 + 品牌搜索
-- 方法：`GET`
-- URL：`/products/by/category-and-brand?category=Electronics&brand=Apple`
-
----
-
-### 18. 更新产品
-- 方法：`PUT`
-- URL：`/products/1/update`
-- Body：
+### 22. Update a product 🛡
+- `PUT /products/product/1/update`
 ```json
 {
   "name": "iPhone 15 Pro",
@@ -192,122 +169,99 @@ base URL: `http://localhost:909/api/v1`
 
 ---
 
-## 四、图片（Image）
+## 4. Images
 
-### 19. 上传图片
-- 方法：`POST`
-- URL：`/images/upload?productId=1`
-- Body：选 **form-data**（不是 JSON）
-  - Key: `files`，类型选 **File**，选一张图片
-- 预期：返回 imageId，记下备用
+### 23. Upload images 🛡
+- `POST /images/upload?productId=1`
+- Body → **form-data** (not JSON)
+  - Key `files`, type **File**, choose one or more images
 
----
+Returns a list of `ImageDto`. Note an `id`.
 
-### 20. 下载图片
-- 方法：`GET`
-- URL：`/images/1/download`
-- 预期：直接返回图片文件
+### 24. Download an image
+- `GET /images/1/download`
 
----
+Public — the storefront needs it without a login. Returns the bytes.
 
-### 21. 更新图片
-- 方法：`PUT`
-- URL：`/images/1/update`
-- Body：form-data，Key: `file`，类型 File，选新图片
+### 25. Update an image 🛡
+- `PUT /images/1/update`
+- Body → form-data, key `file`, type File
+
+### 26. Delete an image 🛡
+- `DELETE /images/1/delete`
 
 ---
 
-### 22. 删除图片
-- 方法：`DELETE`
-- URL：`/images/1/delete`
+## 5. Cart and Cart Items
+
+> The cart is created during registration, so there is nothing to create by hand.
+> Every cart endpoint verifies that the cart belongs to the authenticated user — passing
+> someone else's `cartId` returns **403**, not their data.
+
+### 27. Add an item to the cart 🔒
+- `POST /cartItems/item/add?cartId=1&productId=1&quantity=2`
+
+The `cartId` is your own cart's id. If you do not know it, read it from step 4's response.
+
+### 28. View the cart 🔒
+- `GET /carts/1`
+
+### 29. Cart total 🔒
+- `GET /carts/1/total-price`
+
+### 30. Change an item's quantity 🔒
+- `PUT /cartItems/cart/1/item/1/update?quantity=5`
+
+### 31. Remove an item 🔒
+- `DELETE /cartItems/cart/1/item/1/remove`
+
+### 32. Empty the cart 🔒
+- `DELETE /carts/1/clear`
 
 ---
 
-## 五、购物车（Cart & CartItem）
+## 6. Orders
 
-> 购物车在用户下单时由系统自动创建，不需要手动创建。先通过添加商品的方式触发购物车创建。
+> Make sure the cart has items first — re-run step 27 if you emptied it.
+> As with carts, the `userId` and `orderId` are checked against the authenticated principal.
 
-### 23. 添加商品到购物车（需要认证）
-- 方法：`POST`
-- URL：`/cartItems/item/add?cartId=1&productId=1&quantity=2`
-- Headers：`Authorization: Bearer <token>`
-- 注意：`cartId` 是用户的购物车 ID，首次可以先试 `1`，如果报错从查询用户接口的返回里找 cart 信息
+### 33. Place an order 🔒
+- `POST /orders/order?userId=1`
 
----
+Returns the order. Note its `id`. The cart is emptied and product inventory is decremented
+in the same transaction.
 
-### 24. 查看购物车（需要认证）
-- 方法：`GET`
-- URL：`/carts/1`
-- Headers：`Authorization: Bearer <token>`
+### 34. Get an order 🔒
+- `GET /orders/1/order`
 
----
-
-### 25. 查看购物车总价（需要认证）
-- 方法：`GET`
-- URL：`/carts/1/total-price`
-- Headers：`Authorization: Bearer <token>`
+### 35. List a user's orders 🔒
+- `GET /orders/user/1/order`
 
 ---
 
-### 26. 更新商品数量（需要认证）
-- 方法：`PUT`
-- URL：`/cartItems/cart/1/item/1/update?quantity=5`
-- Headers：`Authorization: Bearer <token>`
+## 7. Cleanup (optional)
+
+### 36. Delete a product 🛡
+- `DELETE /products/product/1/delete`
+
+### 37. Delete a category 🛡
+- `DELETE /categories/1/delete`
+
+### 38. Delete a user 🔒
+- `DELETE /users/1/delete`
 
 ---
 
-### 27. 删除购物车中的商品（需要认证）
-- 方法：`DELETE`
-- URL：`/cartItems/cart/1/item/1/remove`
-- Headers：`Authorization: Bearer <token>`
+## Expected Failures Worth Confirming
 
----
+These are the cases the authorization design exists for. Each should fail:
 
-### 28. 清空购物车（需要认证）
-- 方法：`DELETE`
-- URL：`/carts/1/clear`
-- Headers：`Authorization: Bearer <token>`
-
----
-
-## 六、订单（Order）
-
-> 下订单前确保购物车里有商品（先重新执行步骤 23）
-
-### 29. 下订单（需要认证）
-- 方法：`POST`
-- URL：`/orders/order?userId=1`
-- Headers：`Authorization: Bearer <token>`
-- 预期：返回订单信息，记下 `id`（orderId）
-- 注意：下单后购物车会自动清空
-
----
-
-### 30. 查询订单详情（需要认证）
-- 方法：`GET`
-- URL：`/orders/1/order`
-- Headers：`Authorization: Bearer <token>`
-
----
-
-### 31. 查询用户所有订单（需要认证）
-- 方法：`GET`
-- URL：`/orders/user/1/order`
-- Headers：`Authorization: Bearer <token>`
-
----
-
-## 七、清理测试（可选）
-
-### 32. 删除产品
-- 方法：`DELETE`
-- URL：`/products/1/delete`
-
-### 33. 删除分类
-- 方法：`DELETE`
-- URL：`/categories/1/delete`
-
-### 34. 删除用户（需要认证）
-- 方法：`DELETE`
-- URL：`/users/1/delete`
-- Headers：`Authorization: Bearer <token>`
+| Attempt | Expected |
+|---|---|
+| Any catalog write without a token | 401 |
+| Any catalog write as a non-admin user | 403 |
+| `GET /carts/{id}` with another user's cart id | 403 |
+| `GET /orders/user/{id}/order` with another user's id | 403 |
+| `POST /orders/order?userId={someone else}` | 403 |
+| `GET /users/{id}` for an account that is not yours | 403 |
+| Any protected endpoint more than 2 minutes after login without refreshing | 401 |

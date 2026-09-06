@@ -22,7 +22,7 @@ const ProductDetails = () => {
           <div className='col-md-2'>
             {product.images.map((img) => (
               <div key={img.id} className='image-container'>
-                <ImageZoomify productId={img.id} />
+                <ImageZoomify imageId={img.id} />
               </div>
             ))}
           </div>

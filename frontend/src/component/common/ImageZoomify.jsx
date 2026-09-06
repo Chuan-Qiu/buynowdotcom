@@ -1,36 +1,41 @@
 import { useEffect, useState } from "react";
 import ImageZoom from "react-medium-image-zoom";
 import "react-medium-image-zoom/dist/styles.css";
+import { fetchProductImage } from "../services/imageService";
 
-const ImageZoomify = ({ productId }) => {
-  const [productImg, setProductImg] = useState(null);
+const ImageZoomify = ({ imageId }) => {
+  const [imageSrc, setImageSrc] = useState(null);
 
   useEffect(() => {
-    const fetchProductImage = async (id) => {
-      try {
-        const response = await fetch(
-          `http://localhost:9090/api/v1/images/image/download/${id}`
-        );
-        const blob = await response.blob();
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setProductImg(reader.result);
-        };
-        reader.readAsDataURL(blob);
-      } catch (error) {
-        console.error("Error fetching image:", error);
-      }
+    if (!imageId) return undefined;
+
+    let objectUrl;
+    let cancelled = false;
+
+    fetchProductImage(imageId)
+      .then((url) => {
+        objectUrl = url;
+        if (cancelled) {
+          URL.revokeObjectURL(url);
+        } else {
+          setImageSrc(url);
+        }
+      })
+      .catch((error) => {
+        console.error(`Failed to load image ${imageId}:`, error);
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
+  }, [imageId]);
 
-    if (productId) {
-      fetchProductImage(productId);
-    }
-  }, [productId]);
+  if (!imageSrc) return null;
 
-  if (!productImg) return null;
   return (
     <ImageZoom>
-      <img src={productImg} alt='Product image' className='resized-image' />
+      <img src={imageSrc} alt='Product' className='resized-image' />
     </ImageZoom>
   );
 };

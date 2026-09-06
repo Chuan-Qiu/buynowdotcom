@@ -26,7 +26,9 @@ public class ShopUserDetails implements UserDetails {
     private Collection<GrantedAuthority> authorities;
 
     public static ShopUserDetails buildUserDetails(User user) {
-        List<GrantedAuthority> authorities = user.getRoles()
+        List<GrantedAuthority> authorities = (user.getRoles() == null
+                ? List.<com.dailycodework.buynowdotcom.model.Role>of()
+                : user.getRoles())
                 .stream()
                 .map(role -> new SimpleGrantedAuthority(role.getName()))
                 .collect(Collectors.toList());

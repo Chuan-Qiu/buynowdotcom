@@ -12,13 +12,16 @@ import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-@Component
+/**
+ * Deliberately not a {@code @Component}: it is registered once, explicitly, in
+ * {@code ShopConfig#filterChain}. Annotating it would also auto-register it as a
+ * plain servlet filter outside the security chain, running it twice.
+ */
 public class AuthTokenFilter extends OncePerRequestFilter {
 
     @Autowired

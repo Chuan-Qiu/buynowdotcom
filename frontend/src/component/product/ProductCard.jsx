@@ -11,7 +11,7 @@ const ProductCard = ({ products }) => {
             <Link to={`/product/${product.id}/details`} className='link'>
               <div className='image-container'>
                 {product.images.length > 0 && (
-                  <ProductImage productId={product.images[0].id} />
+                  <ProductImage imageId={product.images[0].id} />
                 )}
               </div>
             </Link>

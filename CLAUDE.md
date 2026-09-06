@@ -62,15 +62,22 @@ Controllers inject the interface. Services depend on other services' interfaces 
 
 Stateless JWT (`jjwt 0.12.x`). Configured in `security/config/ShopConfig.java`:
 
-- `SECURED_URLS` = `/api/v1/carts/**`, `/api/v1/cartItems/**`, `/api/v1/orders/**` → `authenticated()`
-- **Everything else is `permitAll()`** — including all product/category/image/user write operations.
-  `Role` exists as an entity but is not used for authorization. This is a known gap (DESIGN.md §11.2).
-- Access token: 2 min, returned in the response body. Refresh token: 5 min, set as an `HttpOnly` cookie.
-- To get the current user inside a service, call `userService.getAuthenticatedUser()`
-  (reads `SecurityContextHolder`).
+- Catalog (`/products/**`, `/categories/**`, `/images/**`): `GET` is public, every write requires `ROLE_ADMIN`.
+- Per-user resources (`/carts/**`, `/cartItems/**`, `/orders/**`, `/users/**`): authenticated.
+- `/auth/**` and `POST /users/add` are public. Everything else defaults to `authenticated()`.
+- **Authentication is not authorization here.** An id in a URL locates a resource but never proves
+  entitlement, so ownership is verified in the service layer — `CartService.getCart`,
+  `CartService.getCartByUserId`, the three `OrderService` entry points, and
+  `UserService.assertSelfOrAdmin`. They throw `AccessDeniedException` → 403.
+  When adding an endpoint under those paths, add the matching ownership check.
+- `RoleSeeder` seeds `ROLE_USER` / `ROLE_ADMIN`; registration grants `ROLE_USER`. There is no API
+  for granting admin — it is a manual DB insert (see `backend/README.md`).
+- Access token: 2 min, returned in the response body. Refresh token: 5 min, `HttpOnly` cookie.
+- To get the current user inside a service, call `userService.getAuthenticatedUser()`.
 
-CORS is registered as a `WebMvcConfigurer` bean in the same `ShopConfig` class, allowing origins
-`localhost:5173`–`5175`.
+CORS is registered **inside the security filter chain** (`http.cors()` + a `CorsConfigurationSource`
+bean in `ShopConfig`), allowing `localhost:5173`–`5175`. It must stay there, not at the MVC layer:
+otherwise preflight `OPTIONS` is rejected by the authorization rules before reaching a controller.
 
 ### DTO conversion
 
@@ -106,8 +113,18 @@ Conventions to preserve when editing:
 
 - Presentational components take props only — no `useSelector` inside `ProductCard` and friends.
 - One slice per domain. `Products.jsx` is the only place that combines search + brand + pagination.
-- Every API call goes through `createAsyncThunk` with `pending / fulfilled / rejected` in `extraReducers`.
+- Every API call goes through `createAsyncThunk`. `productSlice` declares the shared
+  `pending`/`rejected` behaviour once via `addMatcher` rather than per case — keep it that way.
 - No component imports `axios` directly — always go through `component/services/api.js`.
+  Image URLs are built only in `component/services/imageService.js`.
+- A rejected thunk raises a toast via the listener middleware in `store.js`. Do not add
+  per-component error handling for that.
+
+## Documentation Language
+
+Tracked docs are **English only** — this repository is read by English-speaking reviewers.
+Chinese working copies live beside them as `*.zh-CN.md` and are git-ignored. If you update a
+tracked doc that has a `.zh-CN.md` sibling, update both.
 
 ## Before Changing Behavior
 

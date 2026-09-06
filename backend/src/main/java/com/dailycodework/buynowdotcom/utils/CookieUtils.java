@@ -50,12 +50,4 @@ public class CookieUtils {
         return null;
     }
 
-    public void logCookies(HttpServletRequest request) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                System.out.println("Cookie name: " + cookie.getName() + ", value: " + cookie.getValue());
-            }
-        }
-    }
 }

@@ -5,7 +5,6 @@ import { Card } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import ProductImage from "../utils/ProductImage";
 import { useSelector, useDispatch } from "react-redux";
-import { toast, ToastContainer } from "react-toastify";
 import { setTotalItems } from "../../store/features/paginationSlice";
 import { getDistinctProductsByName } from "../../store/features/productSlice";
 import LoadSpinner from "../common/LoadSpinner";
@@ -65,14 +64,13 @@ const Home = () => {
     <>
       <Hero />
       <div className='d-flex flex-wrap justify-content-center p-5'>
-        <ToastContainer />
         {currentProducts &&
           currentProducts.map((product) => (
             <Card key={product.id} className='home-product-card'>
               <Link to={`/products/${product.name}`} className='link'>
                 <div className='image-container'>
                   {product.images.length > 0 && (
-                    <ProductImage productId={product.images[0].id} />
+                    <ProductImage imageId={product.images[0].id} />
                   )}
                 </div>
               </Link>

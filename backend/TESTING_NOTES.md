@@ -1,128 +1,117 @@
 # Debug & Setup Notes
 
-## 一、MySQL 安装与配置（Mac / Homebrew）
+A running log of problems hit while getting this project working, kept because
+the diagnosis is usually more reusable than the fix.
 
-### 1. 安装并启动 MySQL
+---
+
+## 1. MySQL Setup (macOS / Homebrew)
+
+### 1.1 Install and start
 
 ```bash
 brew install mysql
 brew services start mysql
 ```
 
----
+### 1.2 Root password not set (pressed Enter through `mysql_secure_installation`)
 
-### 2. 设置 root 密码失败（一路回车跳过了 mysql_secure_installation）
-
-**现象：**
+**Symptom**
 ```
 ERROR 1045 (28000): Access denied for user 'root'@'localhost' (using password: NO)
 ```
 
-**原因：** 安装后运行 `mysql_secure_installation` 时没有输入密码，但 MySQL 实际上设了一个随机初始密码。
+**Cause** `mysql_secure_installation` was skipped, but MySQL had already generated a random initial password.
 
-**解决：** 用 skip-grant-tables 模式重置密码：
+**Fix** Reset it in skip-grant-tables mode:
 
 ```bash
 brew services stop mysql
-mysqld_safe --skip-grant-tables &   # 注意：是 mysqld_safe，不是 mysql_safe
+mysqld_safe --skip-grant-tables &   # note: mysqld_safe, not mysql_safe
 ```
 
-等几秒后：
+Then, after a few seconds:
+
 ```bash
 mysql -u root
 ```
 
-进入 MySQL 后执行：
 ```sql
 FLUSH PRIVILEGES;
-ALTER USER 'root'@'localhost' IDENTIFIED BY '你的新密码';
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'your_new_password';
 exit
 ```
 
-最后重启：
 ```bash
 brew services restart mysql
 ```
 
----
+### 1.3 `mysql_safe: command not found`
 
-### 3. `mysql_safe: command not found`
+Typo. The command is `mysqld_safe` — with the `d`.
 
-**原因：** 命令拼写错误，多打了一个 `s`。
+### 1.4 "A mysqld process already exists"
 
-**正确命令：** `mysqld_safe`（有 `d`）
-
----
-
-### 4. "A mysqld process already exists" 导致无法启动
-
-**现象：**
+**Symptom**
 ```
 mysqld_safe A mysqld process already exists
 ```
 
-**原因：** 之前用 `mysqld_safe --skip-grant-tables &` 启动的进程还在后台运行，再次启动时冲突。
+**Cause** The process started earlier with `mysqld_safe --skip-grant-tables &` is still running in the background and conflicts with the new one.
 
-**解决：**
+**Fix**
 ```bash
 sudo pkill mysqld
 brew services start mysql
 ```
 
----
+### 1.5 `brew services start mysql` fails with Bootstrap error 5
 
-### 5. `brew services start mysql` 启动失败（Bootstrap error 5）
-
-**现象：**
+**Symptom**
 ```
 Bootstrap failed: 5: Input/output error
 ```
 
-**解决：** 改用 sudo 启动：
+**Fix** Start it with sudo:
 ```bash
 sudo brew services start mysql
 ```
 
-注意：这会更改一些文件的 owner 为 root，升级时可能需要手动处理。日常开发建议再改回非 root 启动。
+Note that this changes the owner of some files to root, which may need manual cleanup on upgrade. For day-to-day development, switching back to a non-root start is preferable.
 
----
+### 1.6 MySQL Workbench version warning
 
-### 6. MySQL Workbench 版本警告
-
-**现象：**
+**Symptom**
 ```
 Incompatible/nonstandard server version or connection protocol detected (9.6.0).
 MySQL Workbench is developed and tested for MySQL Server versions 5.6, 5.7 and 8.0
 ```
 
-**原因：** Homebrew 安装的 MySQL 是 9.6，比 Workbench 支持的版本新。
+**Cause** Homebrew installs MySQL 9.6, newer than the versions Workbench targets.
 
-**解决：** 点 **Continue Anyway**，功能正常使用，不影响项目。
+**Fix** Click **Continue Anyway**. Everything needed for this project works.
 
----
-
-### 7. MySQL Workbench 连接配置
+### 1.7 Workbench connection settings
 
 - Connection Method: **Standard (TCP/IP)**
 - Hostname: `127.0.0.1`
 - Port: `3306`
 - Username: `root`
-- Default Schema: 留空（连接后再建库）
+- Default Schema: leave empty and create the database after connecting
 
-建库 SQL：
 ```sql
 CREATE DATABASE buynowdotcom;
 ```
 
 ---
 
-## 二、Spring Boot 编译错误
+## 2. Spring Boot Compilation Errors
 
-### 1. `com.fasterxml.jackson.databind does not exist`
+### 2.1 `com.fasterxml.jackson.databind does not exist`
 
-**原因：** `spring-boot-starter-webmvc` 没有自动引入 Jackson。
+**Cause** `spring-boot-starter-webmvc` does not pull in Jackson transitively.
 
-**解决：** 在 `pom.xml` 中添加：
+**Fix** Add it to `pom.xml`:
 ```xml
 <dependency>
     <groupId>com.fasterxml.jackson.core</groupId>
@@ -130,82 +119,66 @@ CREATE DATABASE buynowdotcom;
 </dependency>
 ```
 
----
+### 2.2 `package jakarta.validation does not exist` / `cannot find symbol: class Valid`
 
-### 2. `package jakarta.validation does not exist` / `cannot find symbol: class Valid`
+**Where** `AuthController.java`
 
-**位置：** `AuthController.java`
+**Cause** `@Valid` requires `spring-boot-starter-validation`, but `LoginRequest` carries no validation annotations, so the annotation had nothing to do.
 
-**原因：** `@Valid` 需要 `spring-boot-starter-validation` 依赖，但 `LoginRequest` 本身没有任何校验注解，用不上。
+**Fix** Remove the `@Valid` annotation and its import from `AuthController`.
 
-**解决：** 直接删掉 `AuthController` 里的 `@Valid` 注解和对应 import。
+### 2.3 `DaoAuthenticationProvider cannot be applied to given types`
 
----
+**Cause** Recent Spring Security removed the no-arg constructor and `setUserDetailsService()`; the dependency is now passed to the constructor.
 
-### 3. `DaoAuthenticationProvider cannot be applied to given types`
-
-**原因：** 新版 Spring Security 移除了无参构造函数和 `setUserDetailsService()` 方法，改为构造函数直接传入。
-
-**错误写法：**
 ```java
+// no longer compiles
 DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
 provider.setUserDetailsService(userDetailsService);
-```
 
-**正确写法：**
-```java
+// correct
 DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
 ```
 
----
+### 2.4 `CONCACT` typo in `ProductRepository`
 
-### 4. `CONCACT` 拼写错误（ProductRepository）
+`CONCAT` was misspelled `CONCACT` in the JPQL query, so it failed at runtime. Replaced in all 5 occurrences.
 
-**原因：** JPQL 查询里 `CONCAT` 被拼成了 `CONCACT`，导致查询报错。
+### 2.5 `mappedBy` typo breaking EntityManagerFactory startup
 
-**解决：** 全局替换为 `CONCAT`，共 5 处。
+**Where** `Product.java`
 
----
-
-### 5. `mappedBy` 拼写错误导致 EntityManagerFactory 启动失败
-
-**位置：** `Product.java`
-
-**错误：**
 ```java
+// wrong
 @OneToMany(mappedBy = "prooduct", ...)
-```
 
-**正确：**
-```java
+// right
 @OneToMany(mappedBy = "product", ...)
 ```
 
-同类问题：`Cart.java` 里 `mappedBy = "Cart"` 应为小写 `"cart"`。
+Same class of problem in `Cart.java`, where `mappedBy = "Cart"` should have been lowercase `"cart"`.
 
 ---
 
-## 三、API 测试（Postman）
+## 3. API Testing (Postman)
 
-### 1. 找到应用运行端口
+### 3.1 Finding the port the app is actually on
 
-应用没有设置 `server.port`，但实际运行在 909 而非默认的 8080（由 IntelliJ Run Configuration 决定）。
+At the time of these notes the app had no `server.port` setting and ran on 909, chosen by the IntelliJ run configuration rather than by any file. (It is now declared explicitly as `9090` in `application.properties`, which is the actual lesson here.)
 
-**方法一：看启动日志**
+**From the startup log**
 ```
 Tomcat started on port 909 (http) with context path '/'
 ```
 
-**方法二：命令行查询**
+**From the command line**
 ```bash
 lsof -iTCP -sTCP:LISTEN | grep java
 ```
 
----
+### 3.2 401 Unauthorized on `POST /api/v1/users/add`
 
-### 2. 401 Unauthorized on `POST /api/v1/users/add`
-
-**现象：**
+**Symptom**
 ```json
 {
     "error": "Unauthorized",
@@ -214,57 +187,53 @@ lsof -iTCP -sTCP:LISTEN | grep java
 }
 ```
 
-**原因：** `WebSecurityConfig` 中 `/api/v1/users/**` 整段都被保护了，包括注册接口，导致无法在没有 token 的情况下注册。
+**Cause** The whole `/api/v1/users/**` range was protected, registration included, so there was no way to create the first account without already having a token.
 
-**解决：** 在 `WebSecurityConfig.java` 的 `authorizeHttpRequests` 中，将 `/api/v1/users/add` 单独放在 `authenticated()` 规则之前：
+**Fix** Put the more specific rule ahead of the general one — Spring Security matches in order:
 
 ```java
 .authorizeHttpRequests(auth -> auth
-    .requestMatchers("/api/v1/users/add").permitAll()
-    .requestMatchers(SECURED_URLS.toArray(String[]::new)).authenticated()
-    .anyRequest().permitAll()
+    .requestMatchers(HttpMethod.POST, "/api/v1/users/add").permitAll()
+    .requestMatchers(OWNER_SCOPED).authenticated()
+    ...
 )
 ```
 
-Spring Security 按顺序匹配，更具体的规则必须放在前面。
+> The security configuration has since been reworked (see `DESIGN.md` §8.4). Rule ordering still matters exactly as described.
 
----
+### 3.3 "Required request body is missing"
 
-### 3. "Required request body is missing"
-
-**现象：**
+**Symptom**
 ```json
 {
     "message": "Something went wrong: Required request body is missing: ..."
 }
 ```
 
-**原因：** 在 Postman 中把参数放到了 **Params** 标签页（URL 查询参数），而不是 **Body**。
+**Cause** The parameters were entered on Postman's **Params** tab (URL query string) instead of **Body**.
 
-**规则：**
+**Rule of thumb**
 - `@RequestBody` → Postman Body → raw → JSON
 - `@RequestParam` → Postman Params
 
-**正确配置：**
-1. Body → raw → JSON
-2. 确保 Header 中有 `Content-Type: application/json`
+Also make sure the request carries `Content-Type: application/json`.
 
 ---
 
-## 四、业务逻辑 Bug（API 测试阶段发现）
+## 4. Business-Logic Bugs Found During API Testing
 
-### 1. 注册用户后购物车不存在，添加商品报 "Cart not found"
+### 4.1 "Cart not found" when adding an item after registering
 
-**现象：** 注册完用户，调用 `POST /cartItems/item/add` 报错：
+**Symptom** After registering, `POST /cartItems/item/add` returned:
 ```json
 { "message": "Cart not found" }
 ```
 
-**根本原因：** `UserService.createUser` 只创建了 `User`，没有同步创建 `Cart`。用户注册完没有关联的购物车。
+**Root cause** `UserService.createUser` created the `User` but no `Cart`, so a freshly registered user had nothing to add items to.
 
-**面试考点：** 用户和购物车是 `OneToOne` 关系，购物车的生命周期应该和用户一致，应在创建用户时一并初始化。这属于业务完整性设计缺失。
+**Takeaway** `User` and `Cart` are `OneToOne` and share a lifetime, so the cart should be initialised alongside the user. This is a gap in business-integrity design, not a coding error.
 
-**修复（`UserService.java`）：**
+**Fix** (`UserService.java`)
 ```java
 User savedUser = userRepository.save(user);
 Cart cart = new Cart();
@@ -273,61 +242,56 @@ cartRepository.save(cart);
 return savedUser;
 ```
 
----
+### 4.2 Removing a cart item deleted the Product
 
-### 2. 删除购物车商品时连带删除了 Product
+**Symptom** After `DELETE /cartItems/cart/{cartId}/item/{productId}/remove`, the product vanished from the database and every subsequent product query came back empty.
 
-**现象：** 调用 `DELETE /cartItems/cart/{cartId}/item/{productId}/remove` 后，产品从数据库消失，后续所有产品查询返回空。
-
-**根本原因：** `CartItem.java` 中 `product` 字段配置了 `cascade = CascadeType.ALL`：
+**Root cause** `CartItem.product` was annotated with `cascade = CascadeType.ALL`:
 ```java
 @ManyToOne(cascade = CascadeType.ALL)
 @JoinColumn(name = "product_id")
 private Product product;
 ```
-`CascadeType.ALL` 包含 `REMOVE`，当 CartItem 被删除时，Hibernate 会级联删除关联的 Product。
+`CascadeType.ALL` includes `REMOVE`, so deleting a `CartItem` cascaded into deleting the `Product` it pointed at.
 
-**面试考点：** `@ManyToOne` 关系上不应该加 `CascadeType.ALL` 或 `CascadeType.REMOVE`。级联删除只应该从"拥有方"到"被拥有方"（如 `Order → OrderItem`），不应该反向传播到共享实体（Product 可以属于多个 CartItem，不能被其中一个删掉）。
+**Takeaway** `@ManyToOne` should not carry `CascadeType.ALL` or `CascadeType.REMOVE`. Cascading deletes belong on the owning side of a composition (`Order → OrderItem`), never propagating back into a shared entity — a `Product` can belong to many `CartItem`s and must not be destroyed by one of them.
 
-**修复（`CartItem.java`）：**
+**Fix** (`CartItem.java`)
 ```java
-// 修复前
+// before
 @ManyToOne(cascade = CascadeType.ALL)
 
-// 修复后
+// after
 @ManyToOne
 ```
-`cart` 字段上的 `cascade = CascadeType.ALL` 同理也要移除。
+The same removal applies to the `cart` field.
 
----
+> `Product.category` still carries `cascade = ALL` for the same reason and has the same defect — it is tracked in `DESIGN.md` §11.2.
 
-### 3. 下订单返回 `orderItems: []`，且响应体循环引用导致 JSON 超长
+### 4.3 Checkout returned `orderItems: []` with a huge, self-referential response
 
-**现象：** `POST /orders/order` 返回的订单中 `orderItems` 为空数组，响应 JSON 长达数万字符（User → Cart → User → Cart → ...无限循环）。
+**Symptom** `POST /orders/order` returned an order whose `orderItems` was an empty array, in a JSON body tens of thousands of characters long (User → Cart → User → Cart → …).
 
-**根本原因：** `OrderController.placeOrder` 直接返回了原始 `Order` 实体：
+**Root cause** `OrderController.placeOrder` returned the raw `Order` entity:
 ```java
 Order order = orderService.placeOrder(userId);
 return ResponseEntity.ok(new ApiResponse("...", order));
 ```
-问题一：`Order.orderItems` 是懒加载（`@OneToMany` 默认 `FetchType.LAZY`），Jackson 序列化时 Hibernate Session 已关闭，无法触发懒加载，所以序列化为空集合。
 
-问题二：`Order` 包含 `User`，`User` 包含 `Cart`，`Cart` 包含 `User`，形成循环引用，Jackson 会无限递归序列化。
+Two separate problems:
 
-**面试考点：** Controller 层不应直接返回 JPA 实体，原因有三：
-1. 懒加载在 Session 关闭后失效
-2. 实体间双向关联会导致 Jackson 循环引用
-3. 暴露内部字段（如 `password` 哈希值）
+1. `Order.orderItems` is lazy (`@OneToMany` defaults to `FetchType.LAZY`). By the time Jackson serialized it, the Hibernate session was closed, so the collection could not be initialised and came out empty.
+2. `Order` holds a `User`, which holds a `Cart`, which holds the `User` — a cycle Jackson recurses through indefinitely.
 
-应始终返回 DTO。
+**Takeaway** Controllers should never return JPA entities, for three reasons: lazy associations break once the session closes, bidirectional associations create serialization cycles, and internal fields (such as a password hash) leak. Always return a DTO.
 
-**修复（`OrderController.java`）：**
+**Fix** (`OrderController.java`)
 ```java
-// 修复前
+// before
 Order order = orderService.placeOrder(userId);
 return ResponseEntity.ok(new ApiResponse("...", order));
 
-// 修复后
+// after
 var order = orderService.placeOrder(userId);
 return ResponseEntity.ok(new ApiResponse("...", orderService.getOrder(order.getId())));
 ```
