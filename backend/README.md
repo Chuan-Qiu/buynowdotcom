@@ -162,7 +162,7 @@ Require `Authorization: Bearer <accessToken>`.
 | GET | `/orders/user/{userId}/order` |
 
 > 🔒 marks the only paths in `SECURED_URLS` (`ShopConfig`). Everything else is currently
-> `permitAll()` — see [DESIGN.md §9](../DESIGN.md) for why that is a known gap.
+> `permitAll()` — see [DESIGN.md §11.2](../DESIGN.md) for why that is a known gap.
 
 ## Authentication Flow
 

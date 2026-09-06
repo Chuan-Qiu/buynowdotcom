@@ -14,7 +14,7 @@ A full-stack e-commerce platform — React SPA front end, Spring Boot REST API b
 buynowdotcom/
 ├── backend/     Spring Boot REST API  (Maven)
 ├── frontend/    React SPA             (Vite)
-├── DESIGN.md    Architecture & design document (UML diagrams)
+├── DESIGN.md    Full-stack architecture & design document (23 UML diagrams)
 └── CLAUDE.md    Working notes for AI-assisted development
 ```
 
@@ -101,7 +101,7 @@ and all network traffic goes through a single Axios instance.
 
 | Document | Contents |
 |---|---|
-| [DESIGN.md](DESIGN.md) | Full design document: 14 UML diagrams (domain model class diagram, ER, sequence, state), API contract, design decisions with trade-offs, known issues and roadmap |
+| [DESIGN.md](DESIGN.md) | Full-stack design document: 23 UML diagrams (front-end component/state/routing, end-to-end contract sequences, domain model class diagram, ER, security sequences, order state machine), the front-end/back-end contract, design decisions with trade-offs, known issues on both sides, and a remediation roadmap |
 | [backend/README.md](backend/README.md) | Backend setup, configuration template, endpoint reference |
 | [backend/TESTING_NOTES.md](backend/TESTING_NOTES.md) | MySQL setup and debugging notes |
 | [backend/POSTMAN_TESTING.md](backend/POSTMAN_TESTING.md) | Manual API testing walkthrough |
@@ -117,4 +117,4 @@ dispatch yet.
 **This is a learning/portfolio project and is not production-hardened.** Known gaps —
 including missing resource-ownership checks on protected endpoints, unguarded write
 operations, and absent inventory validation — are documented with severity ratings and a
-remediation roadmap in [DESIGN.md §9–§10](DESIGN.md).
+remediation roadmap in [DESIGN.md §11–§12](DESIGN.md).

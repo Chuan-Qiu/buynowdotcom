@@ -9,7 +9,7 @@ This is a monorepo. Run commands from the matching subdirectory — there is no 
 ```
 backend/     Spring Boot 4 REST API (Maven)
 frontend/    React 19 SPA (Vite)
-DESIGN.md    Architecture document — 14 UML diagrams, design decisions, known issues
+DESIGN.md    Architecture document — 23 UML diagrams (both sides), design decisions, known issues
 ```
 
 ## Commands
@@ -64,7 +64,7 @@ Stateless JWT (`jjwt 0.12.x`). Configured in `security/config/ShopConfig.java`:
 
 - `SECURED_URLS` = `/api/v1/carts/**`, `/api/v1/cartItems/**`, `/api/v1/orders/**` → `authenticated()`
 - **Everything else is `permitAll()`** — including all product/category/image/user write operations.
-  `Role` exists as an entity but is not used for authorization. This is a known gap (DESIGN.md §9).
+  `Role` exists as an entity but is not used for authorization. This is a known gap (DESIGN.md §11.2).
 - Access token: 2 min, returned in the response body. Refresh token: 5 min, set as an `HttpOnly` cookie.
 - To get the current user inside a service, call `userService.getAuthenticatedUser()`
   (reads `SecurityContextHolder`).
@@ -111,6 +111,6 @@ Conventions to preserve when editing:
 
 ## Before Changing Behavior
 
-Read [DESIGN.md](DESIGN.md) §9 first — it lists known defects (IDOR on protected endpoints,
+Read [DESIGN.md](DESIGN.md) §11 first — it lists known defects on both sides (IDOR on protected endpoints,
 unguarded writes, no inventory validation, `cascade = ALL` on `Product.category`) with severity
-ratings. Do not "fix" something already documented there without checking the roadmap in §10.
+ratings. Do not "fix" something already documented there without checking the roadmap in §12.

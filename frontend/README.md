@@ -48,12 +48,15 @@ that is the reason for Redux here. Each owns its own slice; `Products.jsx` is th
 that combines them into one filtered, paginated result. Adding a new filter means adding a
 slice and one condition, not surgery on the existing ones.
 
-**One async pattern everywhere.** Every API-driven slice uses `createAsyncThunk` and handles
-`pending / fulfilled / rejected` in `extraReducers`, so new endpoints wire into the UI
-predictably.
+**One async pattern everywhere.** Every API call goes through `createAsyncThunk`, so new
+endpoints wire into the UI predictably. Note that the three-state contract is only fully
+honoured by `categorySlice`: `productSlice` handles `fulfilled` for all five thunks but
+`rejected` for only one, and `pending` for none — which is why a failed request currently
+leaves the home page spinning. See [DESIGN.md §4.6 and §11.3](../DESIGN.md).
 
 **A single network seam.** No component calls `fetch`/`axios` directly — everything goes
 through the one Axios instance in `component/services/api.js`. If the base URL changes or all
 requests need an auth header, there is exactly one file to touch.
 
-See [DESIGN.md](../DESIGN.md) for the full architecture document.
+See [DESIGN.md](../DESIGN.md) for the full architecture document — §4 covers the front end,
+§3 covers the contract with the back end.
